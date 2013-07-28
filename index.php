@@ -1,9 +1,8 @@
 <?php 
-require_once '/lib/LiveApiClient.php';
 
-define ('LIVE_KEY', '');
-define ('LIVE_ID', '00000000480FF5C7');
-define ('LIVE_SEC', '3iQsYg5LOafSEkzhwPA8AZgfIbtzBFwk');
+require_once '/lib/LiveApiClient.php';
+require_once '/config.inc.php';
+
 
 
 $live = new LiveAPIClient(LIVE_ID, LIVE_SEC, 'http://www.liveapi/');
