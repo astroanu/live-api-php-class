@@ -8,41 +8,91 @@ class LiveAPIClient{
 	protected $_scope;
 	protected $_debug;
 	
+	public function getProfile(){
+		return $this->request('https://apis.live.net/v5.0/me', 'GET');
+	}
+	
+	public function getContacts($limit = false, $offset = false){
+		return $this->request('https://apis.live.net/v5.0/me/contacts', 'GET', array('limit' => $limit, 'offset' => $offset));
+	}
+	
 	function __construct($liveId, $liveSecret, $redirectUrl, $debug = true){
 		$this->setLiveId($liveId) ;
 		$this->setLiveSecret($liveSecret);
 		$this->setRedirectUrl($redirectUrl);
-		$this->setScopes('wl.basic,wl.contacts_emails');
+		$this->setScopes('wl.offline_access,wl.signin,wl.basic');
 		$this->_debug = $debug;
+	}
+	
+	private function curlExec($url, $bodyData){
+		$headers = array('Content-Type: application/x-www-form-urlencoded');		
+		$ch = curl_init($url);
+		
+		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+		curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
+		curl_setopt($ch, CURLOPT_POSTFIELDS,  http_build_query($postFields));
+		curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+		
+		return curl_exec($ch);
+	}
+	
+	public function refreshAccessToken(){
+		$postFields = array(
+				'grant_type' => 'refresh_token',
+				'client_id' => $this->getLiveId(),
+				'client_secret' => $this->getLiveSecret(),
+				'redirect_uri' => $this->getRedirectUrl(),
+				'refresh_token' => $this->getAccessToken('refresh_token')
+		);
+		
+		try{
+			$req = $this->curlExec('https://login.live.com/oauth20_token.srf', $postFields);
+					
+			if(is_object($responseObj = json_decode($req)) && property_exists($responseObj, 'access_token')){
+				throw new LiveAPIException('ok', 200);
+			}
+			elseif(is_object($responseObj = json_decode($req)) && property_exists($responseObj, 'error')){
+				throw new LiveAPIException($responseObj, 1001);
+			}
+			else{
+				throw new LiveAPIException('Unknown Live API Exception', 1000);
+			}
+		}
+		catch (LiveAPIException $e){
+			switch ($e->getCode()) {
+				case 200:
+					$responseObj->ts = time();
+					$this->setAccessToken(json_encode($responseObj));
+					return $this->getAccessToken();
+					break;
+		
+				default:
+					return false;
+					break;
+			}
+		}		
 	}
 	
 	public function fetchAccessToken(){
 		$postFields = array(
-			'code' => isset($_GET['code']) ? $_GET['code'] : '',
-			'grant_type' => 'authorization_code',
-			'client_id' => $this->getLiveId(),
-			'client_secret' => $this->getLiveSecret(),
-			'redirect_uri' => $this->getRedirectUrl(),				
-		);
-		$bodyData = http_build_query($postFields);
-		$headers = array(
-				'Content-Type: application/x-www-form-urlencoded'
+				'code' => isset($_GET['code']) ? $_GET['code'] : '',
+				'grant_type' => 'authorization_code',
+				'client_id' => $this->getLiveId(),
+				'client_secret' => $this->getLiveSecret(),
+				'redirect_uri' => $this->getRedirectUrl()		
 		);
 		
 		try{
-			$ch = curl_init('https://login.live.com/oauth20_token.srf');
-			curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-			curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-			curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
-			curl_setopt($ch, CURLOPT_POSTFIELDS, $bodyData);
-			curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);				
-			$req = curl_exec($ch);
+			$req = $this->curlExec('https://login.live.com/oauth20_token.srf', $postFields);			
 			
 			if(is_object($responseObj = json_decode($req)) && property_exists($responseObj, 'access_token')){
 				throw new LiveAPIException('ok', 200);
-			}elseif(is_object($responseObj = json_decode($req)) && property_exists($responseObj, 'error')){
+			}
+			elseif(is_object($responseObj = json_decode($req)) && property_exists($responseObj, 'error')){
 				throw new LiveAPIException($responseObj, 1001);
-			}else{
+			}
+			else{
 				throw new LiveAPIException('Unknown Live API Exception', 1000);
 			}			
 		}
@@ -72,31 +122,23 @@ class LiveAPIClient{
 	
 	public function request($url, $method = 'GET', $params = array()) {
 		if(intval($this->getAccessToken('ts')) + intval($this->getAccessToken('expires_in')) < time()){
-			echo 'expired';
-		}else{
-			echo intval($this->getAccessToken('expires_in'));
-			echo 'still valid:will expire in '.date('Y d m - h i s', intval($this->getAccessToken('ts')) + intval($this->getAccessToken('expires_in')));
+			$this->refreshAccessToken();
 		}
-		
-		$postFields = array(
-			'client_id' => $this->_live_id,
-			'client_secret' => $this->_live_secret
-		);
-		
-	    $bodyData = http_build_query($postFields);	    
-	    $headers = array('Authorization: Bearer ' . $this->getAccessToken('access_token'));
 	    
 	    try{
-	    	$ch = curl_init($url .'?'. http_build_query($params));	    	 
+	    	$ch = curl_init($url .'?'. http_build_query($params));	    
+	    		 
 	    	curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 	    	curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 	    	curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
-	    	curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);	    	 
+	    	curl_setopt($ch, CURLOPT_HTTPHEADER, array('Authorization: Bearer ' . $this->getAccessToken('access_token')));	
+	    	    	 
 	    	$response = curl_exec($ch);	    
 
 	    	if(is_object($responseObj = json_decode($response)) && property_exists($responseObj, 'error')){
 	    		throw new LiveAPIException($responseObj, 1000);
-	    	}else{
+	    	}
+	    	else{
 	    		throw new LiveAPIException('ok', 200);
 	    	}
 	    }
@@ -140,7 +182,8 @@ class LiveAPIClient{
 		if(is_object($tokenObj = json_decode($this->_access_token))){
 			if(func_num_args() == 1 && is_string($portion = func_get_arg(0))){
 				return $tokenObj->$portion;
-			}elseif(func_num_args() == 1 && is_bool(func_get_arg(0)) && func_get_arg(0) == true){
+			}
+			elseif(func_num_args() == 1 && is_bool(func_get_arg(0)) && func_get_arg(0) == true){
 				return $this->_access_token;
 			}
 			return $tokenObj;

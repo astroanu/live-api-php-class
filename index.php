@@ -1,5 +1,7 @@
 <?php 
 
+date_default_timezone_set('Asia/Colombo');
+
 require_once '/lib/LiveApiClient.php';
 require_once '/config.inc.php';
 
@@ -17,7 +19,9 @@ elseif(is_object($live->fetchAccessToken())){
 elseif(isset($_COOKIE['livetoken']) && is_object(json_decode($_COOKIE['livetoken']))){
 	echo 'token read from cookie';
 	$live->setAccessToken($_COOKIE['livetoken']);
-	$res = $live->request('https://apis.live.net/v5.0/me/contacts', 'GET');
+	
+	
+	$res = $live->getProfile();
 	print_r($res);
 }
 
