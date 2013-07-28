@@ -12,8 +12,8 @@ class LiveAPIClient{
 		return $this->request('https://apis.live.net/v5.0/me', 'GET');
 	}
 	
-	public function getContacts($limit = false, $offset = false){
-		return $this->request('https://apis.live.net/v5.0/me/contacts', 'GET', array('limit' => $limit, 'offset' => $offset));
+	public function getContacts($params = array()){
+		return $this->request('https://apis.live.net/v5.0/me/contacts', 'GET', $params);
 	}
 	
 	function __construct($liveId, $liveSecret, $redirectUrl, $debug = true){
@@ -24,7 +24,7 @@ class LiveAPIClient{
 		$this->_debug = $debug;
 	}
 	
-	private function curlExec($url, $bodyData){
+	private function curlExec($url, $postFields){
 		$headers = array('Content-Type: application/x-www-form-urlencoded');		
 		$ch = curl_init($url);
 		
@@ -62,6 +62,7 @@ class LiveAPIClient{
 		catch (LiveAPIException $e){
 			switch ($e->getCode()) {
 				case 200:
+					error_log('refreshed');
 					$responseObj->ts = time();
 					$this->setAccessToken(json_encode($responseObj));
 					return $this->getAccessToken();
@@ -75,15 +76,19 @@ class LiveAPIClient{
 	}
 	
 	public function fetchAccessToken(){
-		$postFields = array(
-				'code' => isset($_GET['code']) ? $_GET['code'] : '',
-				'grant_type' => 'authorization_code',
-				'client_id' => $this->getLiveId(),
-				'client_secret' => $this->getLiveSecret(),
-				'redirect_uri' => $this->getRedirectUrl()		
-		);
-		
-		try{
+		try{			
+			if(!isset($_GET['code'])){
+				throw new LiveAPIException(__METHOD__ .'A code must be defined');
+			}
+			
+			$postFields = array(
+					'code' => $_GET['code'],
+					'grant_type' => 'authorization_code',
+					'client_id' => $this->getLiveId(),
+					'client_secret' => $this->getLiveSecret(),
+					'redirect_uri' => $this->getRedirectUrl()		
+			);
+
 			$req = $this->curlExec('https://login.live.com/oauth20_token.srf', $postFields);			
 			
 			if(is_object($responseObj = json_decode($req)) && property_exists($responseObj, 'access_token')){

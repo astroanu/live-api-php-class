@@ -13,15 +13,18 @@ if(!$live->fetchAccessToken() && !isset($_COOKIE['livetoken'])){
 }
 elseif(is_object($live->fetchAccessToken())){
 	setcookie('livetoken', $live->getAccessToken(true));
-	echo 'connected';
-	header('Location: '. $_SERVER['PHP_SELF']);
+	echo 'connected to API<br>';
+	echo 'token is ' . $live->getAccessToken(true) . '<br>';
+	echo '<a href="' . $_SERVER['PHP_SELF'] . '">Click to Refresh</a>';
+	//header('Location: '. $_SERVER['PHP_SELF']);
 }
 elseif(isset($_COOKIE['livetoken']) && is_object(json_decode($_COOKIE['livetoken']))){
-	echo 'token read from cookie';
+	echo 'token was read from cookie<br>';
+	echo 'token created at ' . date('Y m d - h i s') . '<br>';
 	$live->setAccessToken($_COOKIE['livetoken']);
 	
+	$res = $live->getContacts();
 	
-	$res = $live->getProfile();
 	print_r($res);
 }
 
