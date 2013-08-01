@@ -33,7 +33,7 @@ class LiveAPIClient{
 		return $this->request('https://apis.live.net/v5.0/me/contacts', 'GET', $params);
 	}
 	
-	function __construct($liveId, $liveSecret, $redirectUrl, $debug = true){
+	function __construct($liveId, $liveSecret, $redirectUrl = null, $debug = true){
 		$this->setLiveId($liveId) ;
 		$this->setLiveSecret($liveSecret);
 		$this->setRedirectUrl($redirectUrl);
