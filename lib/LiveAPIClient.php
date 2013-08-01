@@ -1,4 +1,13 @@
 <?php
+/**
+ * PHP Class for Microsoft Live API
+ *
+ * {@link https://github.com/astroanu/live-api-php-class live-api-php-class}
+ * 
+ * @author       Anuradha Jayathilaka <astroanu2004@gmail.com>
+ * @version    0.1
+ */
+
 class LiveAPIClient{
 	
 	protected $_live_id;
@@ -8,10 +17,18 @@ class LiveAPIClient{
 	protected $_scope;
 	protected $_debug;
 	
-	public function getProfile(){
-		return $this->request('https://apis.live.net/v5.0/me', 'GET');
+	/**
+	 * @param string $guid 
+	 * @return object
+	 */
+	public function getProfile($guid = 'me'){
+		return $this->request('https://apis.live.net/v5.0/' . $guid, 'GET');
 	}
 	
+	/**
+	 * @param array $params
+	 * @return object
+	 */
 	public function getContacts($params = array()){
 		return $this->request('https://apis.live.net/v5.0/me/contacts', 'GET', $params);
 	}
@@ -37,6 +54,9 @@ class LiveAPIClient{
 		return curl_exec($ch);
 	}
 	
+	/**
+	 * @return Object
+	 */
 	public function refreshAccessToken(){
 		$postFields = array(
 				'grant_type' => 'refresh_token',
@@ -75,6 +95,9 @@ class LiveAPIClient{
 		}		
 	}
 	
+	/**
+	 * @return Object
+	 */
 	public function fetchAccessToken(){
 		try{			
 			if(!isset($_GET['code'])){
@@ -116,6 +139,10 @@ class LiveAPIClient{
 		}		
 	}
 	
+	/**
+	 * @param boolean $returnUrl
+	 * @return string if $returnUrl is true else redirect
+	 */
 	public function authorize($returnUrl = false){
 		$url  = 'https://login.live.com/oauth20_authorize.srf?client_id='.$this->getLiveId().
 				'&scope='.$this->getScopes().'&response_type=code&redirect_uri='.$this->getRedirectUrl();
@@ -125,6 +152,12 @@ class LiveAPIClient{
 		header('Location: ' . $url );
 	} 
 	
+	/**
+	 * @param string $url
+	 * @param string $method
+	 * @param array $params
+	 * @return object
+	 */
 	public function request($url, $method = 'GET', $params = array()) {
 		if(intval($this->getAccessToken('ts')) + intval($this->getAccessToken('expires_in')) < time()){
 			$this->refreshAccessToken();
