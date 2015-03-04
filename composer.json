@@ -1,0 +1,13 @@
+{
+    "name": "astroanu/live-api-php-class",
+    "description": "PHP Class for Microsoft Live API",
+    "keywords": ["Live", "Microsoft"],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Anuradha Jayathilaka",
+            "email": "astroanu2004@gmail.com"
+        }
+    ],
+    "minimum-stability": "dev"
+}
